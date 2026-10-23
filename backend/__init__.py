@@ -1,0 +1,1 @@
+"""CampusFlow academic assistant backend."""

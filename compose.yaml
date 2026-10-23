@@ -1,0 +1,45 @@
+services:
+  api:
+    build: .
+    command: ["sh", "-c", "alembic upgrade head && python -m backend.main"]
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql+psycopg://campusflow:${POSTGRES_PASSWORD:-campusflow-local-only}@db:5432/campusflow
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mcp:
+    build: .
+    command: ["python", "-m", "backend.mcp_server"]
+    env_file: .env
+    environment:
+      MCP_HOST: 0.0.0.0
+      DATABASE_URL: postgresql+psycopg://campusflow:${POSTGRES_PASSWORD:-campusflow-local-only}@db:5432/campusflow
+    ports:
+      - "127.0.0.1:8001:8001"
+    depends_on:
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: campusflow
+      POSTGRES_USER: campusflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-campusflow-local-only}
+    volumes:
+      - campusflow-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campusflow -d campusflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  campusflow-postgres:
